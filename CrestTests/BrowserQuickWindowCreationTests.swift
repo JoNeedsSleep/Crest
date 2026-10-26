@@ -7,14 +7,18 @@ import XCTest
 final class BrowserQuickWindowCreationTests: XCTestCase {
     // MARK: - Actions - Creation
 
+    /// Protects command dispatch when the focused Quick Window has no page actions.
     func testNewQuickWindowFromAnEmptyQuickWindowKeepsItsSpaceAndDestination() async throws {
         try await checkCreation(startsEmpty: true)
     }
 
+    /// Protects the focused page's Space and promotion destination when opening a sibling.
     func testNewQuickWindowFromALoadedQuickWindowKeepsItsSpaceAndDestination() async throws {
         try await checkCreation(startsEmpty: false)
     }
 
+    /// Exercises shell dispatch with an unrelated locked browser Space, then
+    /// verifies the child retains its source access gate and destination lifetime.
     private func checkCreation(startsEmpty: Bool) async throws {
         let host = WebKitShellHost()
         let application = try BrowserMacApplication()
@@ -86,6 +90,7 @@ final class BrowserQuickWindowCreationTests: XCTestCase {
         XCTAssertTrue(windows.quickWindow(secondID) === second)
     }
 
+    /// Yields for native focus or page preparation, failing after a bounded wait.
     private func waitUntil(_ condition: @escaping @MainActor () -> Bool) async throws {
         let deadline = ContinuousClock.now.advanced(by: .seconds(3))
         while !condition() {

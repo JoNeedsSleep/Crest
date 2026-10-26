@@ -7,6 +7,8 @@ import XCTest
 final class BrowserQuickWindowGeometryTests: XCTestCase {
     // MARK: - Actions - Persistence
 
+    /// Protects shared geometry persistence across concurrent windows, older
+    /// window closure, and a fresh reader of the same preferences suite.
     func testLatestAdjustedFrameReachesNewWindowsAndSurvivesReopeningPreferences() async throws {
         let suiteName = "BrowserQuickWindowGeometryTests.\(UUID().uuidString)"
         let defaults = try XCTUnwrap(UserDefaults(suiteName: suiteName))
@@ -41,6 +43,8 @@ final class BrowserQuickWindowGeometryTests: XCTestCase {
 
     // MARK: - Actions - Windows
 
+    /// Attaches the production geometry host to a native window and waits for
+    /// deferred placement using the caller's disposable preferences suite.
     private func makeWindow(defaults: UserDefaults) async throws -> NSWindow {
         let window = NSWindow(
             contentRect: CGRect(x: 0, y: 0, width: 720, height: 460),

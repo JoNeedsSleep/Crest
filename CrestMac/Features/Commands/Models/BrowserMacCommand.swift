@@ -209,6 +209,8 @@ struct BrowserMacCommand {
 
     // MARK: - Initializers
 
+    /// Adapts actions that need only the current window to the common command
+    /// signature while retaining their availability and presentation metadata.
     private init(
         _ kind: ShortcutCommand.Kinds,
         actsOnPage: Bool = false,
@@ -227,6 +229,8 @@ struct BrowserMacCommand {
             run: { actions, _ in run(actions) })
     }
 
+    /// Defines a command whose availability and action also inspect the exact
+    /// shortcut command, including parameterized commands such as numbered selections.
     private init(
         _ kind: ShortcutCommand.Kinds,
         actsOnPage: Bool = false,

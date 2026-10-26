@@ -24,6 +24,8 @@ final class BrowserQuickWindowGeometryHostView: NSView {
 
     // MARK: - Initializers
 
+    /// Uses launch-scoped preferences by default; nil keeps adjustments only
+    /// in memory, and an explicit suite lets validation use disposable state.
     init(
         pagePoolRegistry: BrowserPagePoolRegistry?,
         targetWindowID: UUID?,
@@ -35,6 +37,7 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         super.init(frame: .zero)
     }
 
+    /// Geometry hosts require their runtime dependencies and cannot load from a storyboard.
     @available(*, unavailable)
     required init?(coder: NSCoder) {
         fatalError("init(coder:) has not been implemented")
@@ -42,6 +45,7 @@ final class BrowserQuickWindowGeometryHostView: NSView {
 
     // MARK: - Actions - Attachment
 
+    /// Drops observations of the previous window before attaching to another.
     override func viewWillMove(toWindow newWindow: NSWindow?) {
         NotificationCenter.default.removeObserver(self)
         positionedWindow = nil
@@ -49,11 +53,13 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         super.viewWillMove(toWindow: newWindow)
     }
 
+    /// Defers placement until the shell has finished applying its initial frame.
     override func viewDidMoveToWindow() {
         super.viewDidMoveToWindow()
         scheduleGeometryUpdate()
     }
 
+    /// Leaves pointer input to the page and chrome beneath this geometry bridge.
     override func hitTest(_ point: NSPoint) -> NSView? {
         nil
     }
@@ -85,6 +91,8 @@ final class BrowserQuickWindowGeometryHostView: NSView {
             width: size.width, height: size.height)
     }
 
+    /// Places each attached window once, restoring the last adjustment before
+    /// observing later changes so automatic placement never becomes the saved preference.
     func updateWindowGeometry() {
         guard let window, positionedWindow !== window, !isWaitingForPlacement else { return }
         let frame: CGRect
@@ -117,6 +125,9 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         observeGeometry(of: window)
     }
 
+    /// Fits a saved frame to the display it overlaps most, falling back to the
+    /// current display when its original display is gone. Visible bounds take
+    /// precedence over minimum size when a display cannot accommodate both.
     private func restoredFrame(_ frame: CGRect, for window: NSWindow) -> CGRect {
         let screens = NSScreen.screens.map(\.visibleFrame)
         let bestScreen = screens.max { first, second in
@@ -140,6 +151,7 @@ final class BrowserQuickWindowGeometryHostView: NSView {
 
     // MARK: - Actions - Persistence
 
+    /// Reads the latest shared adjustment, rejecting malformed persisted geometry.
     private func rememberedFrame() -> CGRect? {
         let frame: CGRect?
         if let defaults {
@@ -151,6 +163,7 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         return frame
     }
 
+    /// Tracks adjustments and fullscreen transitions only for the attached window.
     private func observeGeometry(of window: NSWindow) {
         let center = NotificationCenter.default
         for name in [
@@ -166,6 +179,8 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         }
     }
 
+    /// Saves only usable normal-window frames; temporary system states and
+    /// intermediate live-resize frames must not replace the person's preference.
     @objc private func rememberWindowFrame() {
         guard let window = positionedWindow,
             !isChangingFullScreen, !window.styleMask.contains(.fullScreen), !window.isZoomed,
@@ -179,20 +194,26 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         }
     }
 
+    /// Suppresses frame capture while AppKit changes fullscreen presentation.
     @objc private func beginFullScreenChange() {
         isChangingFullScreen = true
     }
 
+    /// Allows later adjustments to save again without saving the transition itself.
     @objc private func endFullScreenChange() {
         isChangingFullScreen = false
     }
 
+    /// Requires finite coordinates and positive stored dimensions, since CGRect's
+    /// width and height accessors otherwise conceal negative persisted sizes.
     private static func isUsable(_ frame: CGRect) -> Bool {
         frame.origin.x.isFinite && frame.origin.y.isFinite
             && frame.size.width.isFinite && frame.size.height.isFinite
             && frame.size.width > 0 && frame.size.height > 0
     }
 
+    /// Holds synchronous bridge updates until the next main-loop turn, after
+    /// the hosting controller and shell finish their initial sizing and centering.
     private func scheduleGeometryUpdate() {
         // The hosting controller and shell finish setting the initial size
         // and centering before this attachment's saved placement is applied.
@@ -204,6 +225,7 @@ final class BrowserQuickWindowGeometryHostView: NSView {
         }
     }
 
+    /// Avoids a redundant AppKit frame update for differences below half a point.
     private func framesApproximatelyEqual(
         _ first: CGRect,
         _ second: CGRect
@@ -216,6 +238,8 @@ final class BrowserQuickWindowGeometryHostView: NSView {
 
     // MARK: - Mutators
 
+    /// Refreshes the opener used for first-use placement without repositioning
+    /// a window whose initial geometry has already been applied.
     func configure(
         pagePoolRegistry: BrowserPagePoolRegistry?,
         targetWindowID: UUID?
