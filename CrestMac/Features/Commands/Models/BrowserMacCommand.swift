@@ -20,7 +20,11 @@ struct BrowserMacCommand {
     static let openFile = BrowserMacCommand(
         .openFile, isAvailable: { $0.supportsEngineCapability(.localFiles) },
         run: { $0.openFile() })
-    static let newQuickWindow = BrowserMacCommand(.newQuickWindow) { $0.openQuickWindow() }
+    static let newQuickWindow = BrowserMacCommand(
+        .newQuickWindow,
+        withoutWindow: BrowserMacWindowlessCommand(
+            isAvailable: { $0.isQuickWindowKey }, run: { $0.openQuickWindowFromKeyQuickWindow() }),
+        run: { $0.openQuickWindow() })
     static let newPrivateWindow = BrowserMacCommand(
         .newPrivateWindow, withoutWindow: .always { $0.openPrivateWindow() },
         run: { $0.openPrivateWindow() })
